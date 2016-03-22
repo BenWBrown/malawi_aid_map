@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<!-- Code adapted from: http://leafletjs.com/examples/choropleth.html -->
+<html>
+
+  <head>
+    <!--TODO?: DOWNLOAD-->
+  	<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
+    <script src="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
+
+    <style>
+    #map {
+      width: 600px;
+      height: 700px;
+    }
+
+    .info {
+      padding: 6px 8px;
+      font: 14px/16px Arial, Helvetica, sans-serif;
+      background: white;
+      background: rgba(255,255,255,0.8);
+      box-shadow: 0 0 15px rgba(0,0,0,0.2);
+      border-radius: 5px;
+    }
+    .info h4 {
+      margin: 0 0 5px;
+      color: #777;
+    }
+
+    .legend {
+      text-align: left;
+      line-height: 18px;
+      color: #555;
+    }
+    .legend i {
+      width: 18px;
+      height: 18px;
+      float: left;
+      margin-right: 8px;
+      opacity: 0.7;
+    }
+  </style>
+  </head>
+
+ 
+
+  <body>
+  <p> Map: </p>
+
+  <div id="map"></div>
+
+  <script type="text/javascript" src="testjson.js"></script>
+  <script type="text/javascript" src="tadata.js"></script>
+  <script type="text/javascript">
+
+  var mapboxAccessToken = "pk.eyJ1IjoiYndicm93biIsImEiOiJjaW0yOTM3NWUwNnZjODNrczkwdmpsdmdwIn0.Suenv51O4LhrgsjtEokp7A";
+  var map = L.map('map').setView([-13.95, 33.7], 10);
+
+  L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=' + mapboxAccessToken, {
+      id: 'mapbox.light',
+      attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, ' +
+        '<a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+        'Imagery © <a href="http://mapbox.com">Mapbox</a>',
+      id: 'mapbox.light'
+  }).addTo(map);
+
+  //TODO: MAKE MEANINGFUL COLORS
+  function getColor(d) {
+    return d > 18 ? '#800026' :
+           d > 15  ? '#BD0026' :
+           d > 12  ? '#E31A1C' :
+           d > 9  ? '#FC4E2A' :
+           d > 6   ? '#FD8D3C' :
+           d > 3   ? '#FEB24C' :
+           d > 0   ? '#FED976' :
+                      '#FFEDA0';
+  }
+
+  //TODO: STYLE DIFFERENTLY?
+  function style(feature) {
+    return {
+        fillColor: getColor(feature.properties.pk), //TODO: choose correct feature here
+        weight: 2,
+        opacity: 1,
+        color: 'white',
+        dashArray: '3',
+        fillOpacity: 0.7
+    };
+  }
+
+  map.on("zoomend", function(e) {
+    //make TAs visible and front
+    if (map.getZoom() >= 9) {
+      districtGeojson.onEachFeature = nill;
+      taGeojson.onEachFeature = onEachFeatureActive;
+      taGeojson.bringToFront()
+    } else {
+      taGeojson.onEachFeature = nill;
+      districtGeojson.onEachFeature = onEachFeatureActive;
+      districtGeojson.bringToFront()
+    }
+  });
+
+  function nill(){};
+
+  function highlightFeature(e) {
+    var layer = e.target;
+
+    //var type = e.target.//TODO: CHECK IF TA OR DISTRICT
+
+    layer.setStyle({
+        weight: 5,
+        color: '#666',
+        dashArray: '',
+        fillOpacity: 0.7
+    });
+
+      layer.bringToFront();
+  }
+
+  function resetHighlight(e) {
+    districtGeojson.resetStyle(e.target);
+  }
+
+  function zoomToFeature(e) {
+    //TODO: MAKE THIS CONDITIONAL FOR DISTRICT LAYER
+    //TODO: MAKE THE ONLY VISIBLE TA'S THE ONES IN DISTRICT
+    //TODO: STYLE CORRECTLY (NOT BLACK)
+    //TODO: ADD A WAY TO GET BACK (EVENT LISTENER?) (move to mouseover?)
+    map.fitBounds(e.target.getBounds());
+    // taGeojson.setStyle({
+    //   fillColor: "ffffff",
+    //   visibility: "hidden",
+    //   fillOpacity: 0
+    // });
+    //taGeojson.bringToFront();
+  }
+
+  function onEachFeatureActive(feature, layer) {
+    layer.on({
+        mouseover: highlightFeature,
+        mouseout: resetHighlight,
+        click: zoomToFeature
+    });
+  }
+
+  var districtGeojson = L.geoJson(districtData, {
+    style: style,
+    onEachFeature: onEachFeatureActive
+  }).addTo(map);
+
+  var taGeojson = L.geoJson(taData, {
+    style: style,
+    onEachFeature: onEachFeatureActive
+  }).addTo(map)
+  .bringToBack();
+
+  </script>
+  </body>
+
+ 
+
+</html>
