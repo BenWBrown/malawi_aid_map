@@ -41,7 +41,7 @@
   </style>
   </head>
 
- 
+
 
   <body>
   <p> Map: </p>
@@ -90,17 +90,56 @@
   map.on("zoomend", function(e) {
     //make TAs visible and front
     if (map.getZoom() >= 9) {
-      districtGeojson.onEachFeature = nill;
-      taGeojson.onEachFeature = onEachFeatureActive;
+      for (i in districtGeojson._layers) {
+        var layer = districtGeojson._layers[i];
+        layer.off("click");
+        layer.off("mouseover");
+        layer.off("mouseout");
+      }
+      for (i in taGeojson._layers) {
+        var layer = taGeojson._layers[i];
+        layer.on({
+          mouseover: highlightFeature,
+          mouseout: resetHighlight,
+          click: zoomToFeature
+        })
+      }
       taGeojson.bringToFront()
     } else {
-      taGeojson.onEachFeature = nill;
-      districtGeojson.onEachFeature = onEachFeatureActive;
+      for (i in taGeojson._layers) {
+        var layer = taGeojson._layers[i];
+        layer.off("click");
+        layer.off("mouseover");
+        layer.off("mouseout");
+      }
+      for (i in districtGeojson._layers) {
+        var layer = districtGeojson._layers[i];
+        layer.on({
+          mouseover: highlightFeature,
+          mouseout: resetHighlight,
+          click: zoomToFeature
+        })
+      }
       districtGeojson.bringToFront()
     }
   });
 
-  function nill(){};
+  function onEachFeatureActive(feature, layer) {
+    layer.on({
+        mouseover: highlightFeature,
+        mouseout: resetHighlight,
+        click: zoomToFeature
+    });
+  }
+
+  function disactivate(feature, layer){
+    layer.on({
+      mouseover: null,
+      mouseout: null,
+      click: null
+    })
+
+  };
 
   function highlightFeature(e) {
     var layer = e.target;
@@ -135,14 +174,6 @@
     //taGeojson.bringToFront();
   }
 
-  function onEachFeatureActive(feature, layer) {
-    layer.on({
-        mouseover: highlightFeature,
-        mouseout: resetHighlight,
-        click: zoomToFeature
-    });
-  }
-
   var districtGeojson = L.geoJson(districtData, {
     style: style,
     onEachFeature: onEachFeatureActive
@@ -157,6 +188,6 @@
   </script>
   </body>
 
- 
+
 
 </html>
