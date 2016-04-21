@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<style>
+body {
+  font: 14px sans-serif;
+}
+
+.states {
+  fill: none;
+  stroke: #fff;
+  stroke-linejoin: round;
+}
+
+.Oranges .q0-9{fill:rgb(255,245,235)}
+.Oranges .q1-9{fill:rgb(254,230,206)}
+.Oranges .q2-9{fill:rgb(253,208,162)}
+.Oranges .q3-9{fill:rgb(253,174,107)}
+.Oranges .q4-9{fill:rgb(253,141,60)}
+.Oranges .q5-9{fill:rgb(241,105,19)}
+.Oranges .q6-9{fill:rgb(217,72,1)}
+.Oranges .q7-9{fill:rgb(166,54,3)}
+.Oranges .q8-9{fill:rgb(127,39,4)}
+
+.focus text {
+  fill: black;
+  font-weight: 600;
+}
+</style>
+
+<body>
+<!--d3 standard library-->
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<!--using a queue to load resources ansynchronously-->
+<script src="http://d3js.org/queue.v1.min.js"></script>
+<script>
+
+//TODO: maybe have these adjust to size of page
+var width = 960,
+    height = 500;
+
+//shouldn't need this. map data structure, not carto map
+//var popById = d3.map();
+
+var quantize = d3.scale.quantize()
+    .range(d3.range(9).map(function(i) { return "q" + i + "-9"; }));
+
+//TODO: create a custom projection for Malawi
+var projection = d3.geo.conicEqualArea()
+                  .center([33.7,-13.95])
+                  .scale(5000) //takes long-lat
+
+console.log(projection)
+
+//path drawing function for geojson
+var path = d3.geo.path()
+    .projection(projection);
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+queue()
+    .defer(d3.json, "taData.geojson")
+    .defer(d3.json, "districtData.geojson")
+    .await(plot);
+
+function plot(error, taData, districtData) {
+
+  if (error) throw error;
+
+  //create district data
+  var districts = svg.append("g")
+      .attr("class", "states Oranges")
+    .selectAll("path").data(districtData.features);
+
+  districts.enter().append("path");
+  districts.attr({
+        "class": "q0-9", //TODO: THIS IS WHERE WE CAN CHANGE COLORS
+        "d": path,
+      })
+    //TODO: FINISH MOUSEOVER/MOUSEOUT CAPABILITIES
+    //probably use css classes
+    .on("mouseover", function(d) {console.log("mousover (district):"); console.log(d);});
+
+  var TAs = svg.append("g")
+      .attr("class", "states Oranges")
+    .selectAll("path").data(taData.features);
+
+  TAs.enter().append("path");
+  TAs.attr({
+        "class": "q3-9",
+        "d": path,
+      })
+    .on("mouseover", function(d) {console.log("mousover (ta):"); console.log(d);});
+}
+
+</script>
+</body>
