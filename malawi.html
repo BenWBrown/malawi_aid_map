@@ -54,6 +54,7 @@
 
   var mapboxAccessToken = "pk.eyJ1IjoiYndicm93biIsImEiOiJjaW0yOTM3NWUwNnZjODNrczkwdmpsdmdwIn0.Suenv51O4LhrgsjtEokp7A";
   var map = L.map('map').setView([-13.95, 33.7], 10);
+  var displayFeature;
 
   L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=' + mapboxAccessToken, {
       id: 'mapbox.light',
@@ -92,6 +93,7 @@
     if (map.getZoom() >= 9) {
       for (i in districtGeojson._layers) {
         var layer = districtGeojson._layers[i];
+        resetHighlight(layer);
         layer.off("click");
         layer.off("mouseover");
         layer.off("mouseout");
@@ -108,6 +110,7 @@
     } else {
       for (i in taGeojson._layers) {
         var layer = taGeojson._layers[i];
+        resetHighlight(layer);
         layer.off("click");
         layer.off("mouseover");
         layer.off("mouseout");
@@ -143,35 +146,30 @@
 
   function highlightFeature(e) {
     var layer = e.target;
-
-    //var type = e.target.//TODO: CHECK IF TA OR DISTRICT
-
     layer.setStyle({
         weight: 5,
         color: '#666',
         dashArray: '',
         fillOpacity: 0.7
     });
-
-      layer.bringToFront();
+    layer.bringToFront();
   }
 
   function resetHighlight(e) {
-    districtGeojson.resetStyle(e.target);
+    if (e.target) districtGeojson.resetStyle(e.target);
+    else districtGeojson.resetStyle(e);
+
   }
 
   function zoomToFeature(e) {
-    //TODO: MAKE THIS CONDITIONAL FOR DISTRICT LAYER
-    //TODO: MAKE THE ONLY VISIBLE TA'S THE ONES IN DISTRICT
-    //TODO: STYLE CORRECTLY (NOT BLACK)
-    //TODO: ADD A WAY TO GET BACK (EVENT LISTENER?) (move to mouseover?)
     map.fitBounds(e.target.getBounds());
-    // taGeojson.setStyle({
-    //   fillColor: "ffffff",
-    //   visibility: "hidden",
-    //   fillOpacity: 0
-    // });
-    //taGeojson.bringToFront();
+    clickedOnFeature(e.target.feature);
+  }
+
+  function clickedOnFeature(feature) {
+    //TODO: get UI input from Joe. do stuff here
+    displayFeature = feature;
+    console.log(feature);
   }
 
   var districtGeojson = L.geoJson(districtData, {
