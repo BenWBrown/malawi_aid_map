@@ -1,5 +1,10 @@
 <!DOCTYPE html>
 <!-- Code adapted from: http://leafletjs.com/examples/choropleth.html -->
+<!-- TODO LIST:
+  d3/html info panel
+    locator/context map
+  sql.js
+-->
 <html>
 
   <head>
@@ -10,7 +15,16 @@
     <style>
     #map {
       width: 600px;
-      height: 700px;
+      height: 400px;
+    }
+
+    #dataPanel{
+      float:left;
+      background-color: #ededed;
+      margin-left: 25px;
+      margin-right: 25px;
+      padding: 15px;
+      margin-top:10px;
     }
 
     .info {
@@ -89,41 +103,12 @@
   }
 
   map.on("zoomend", function(e) {
-    //make TAs visible and front
     if (map.getZoom() >= 9) {
-      for (i in districtGeojson._layers) {
-        var layer = districtGeojson._layers[i];
-        resetHighlight(layer);
-        layer.off("click");
-        layer.off("mouseover");
-        layer.off("mouseout");
-      }
-      for (i in taGeojson._layers) {
-        var layer = taGeojson._layers[i];
-        layer.on({
-          mouseover: highlightFeature,
-          mouseout: resetHighlight,
-          click: zoomToFeature
-        })
-      }
-      taGeojson.bringToFront()
+      taGeojson.addTo(map);
+      map.removeLayer(districtGeojson);
     } else {
-      for (i in taGeojson._layers) {
-        var layer = taGeojson._layers[i];
-        resetHighlight(layer);
-        layer.off("click");
-        layer.off("mouseover");
-        layer.off("mouseout");
-      }
-      for (i in districtGeojson._layers) {
-        var layer = districtGeojson._layers[i];
-        layer.on({
-          mouseover: highlightFeature,
-          mouseout: resetHighlight,
-          click: zoomToFeature
-        })
-      }
-      districtGeojson.bringToFront()
+      districtGeojson.addTo(map);
+      map.removeLayer(taGeojson);
     }
   });
 
@@ -162,6 +147,7 @@
   }
 
   function zoomToFeature(e) {
+    //TODO: DON'T ZOOM ON TAs
     map.fitBounds(e.target.getBounds());
     clickedOnFeature(e.target.feature);
   }
