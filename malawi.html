@@ -11,14 +11,19 @@
     <!--TODO?: DOWNLOAD-->
   	<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
     <script src="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
+    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
 
     <style>
     #map {
       width: 600px;
       height: 400px;
+      float: left;
+      margin-top:10px;
     }
 
     #dataPanel{
+      width: 400px;
+      height: 400px;
       float:left;
       background-color: #ededed;
       margin-left: 25px;
@@ -58,9 +63,11 @@
 
 
   <body>
-  <p> Map: </p>
-
   <div id="map"></div>
+  <div id="dataPanel">
+    <h5 id=dataTitle>Title</h5>
+    <p> some stuff or something </p>
+  </div>
 
   <script type="text/javascript" src="testjson.js"></script>
   <script type="text/javascript" src="tadata.js"></script>
@@ -77,6 +84,11 @@
         'Imagery © <a href="http://mapbox.com">Mapbox</a>',
       id: 'mapbox.light'
   }).addTo(map);
+
+  function updateDataDisplay() {
+    var text = d3.select("#dataPanel").select("p");
+    text.text(displayFeature.properties.districtName);
+  }
 
   //TODO: MAKE MEANINGFUL COLORS
   function getColor(d) {
@@ -112,22 +124,22 @@
     }
   });
 
-  function onEachFeatureActive(feature, layer) {
+  function onEachTA(feature, layer) {
     layer.on({
         mouseover: highlightFeature,
         mouseout: resetHighlight,
-        click: zoomToFeature
+        click: onClick
     });
   }
 
-  function disactivate(feature, layer){
+  function onEachDistrict(feature, layer) {
     layer.on({
-      mouseover: null,
-      mouseout: null,
-      click: null
+        mouseover: highlightFeature,
+        mouseout: resetHighlight,
+        click: onClick,
+        dblclick: onDoubleClick
     })
-
-  };
+  }
 
   function highlightFeature(e) {
     var layer = e.target;
@@ -143,31 +155,34 @@
   function resetHighlight(e) {
     if (e.target) districtGeojson.resetStyle(e.target);
     else districtGeojson.resetStyle(e);
-
   }
 
-  function zoomToFeature(e) {
-    //TODO: DON'T ZOOM ON TAs
-    map.fitBounds(e.target.getBounds());
-    clickedOnFeature(e.target.feature);
-  }
-
-  function clickedOnFeature(feature) {
-    //TODO: get UI input from Joe. do stuff here
+  function onClick(e) {
+    var feature = e.target.feature;
     displayFeature = feature;
-    console.log(feature);
+    updateDataDisplay();
+  }
+
+  function onDoubleClick(e) {
+    if (!isTA(e)) {
+      map.fitBounds(e.target.getBounds());
+    }
+    onClick(e);
+  }
+
+  function isTA(e) {
+    return e.target.feature.properties.districtna != null
   }
 
   var districtGeojson = L.geoJson(districtData, {
     style: style,
-    onEachFeature: onEachFeatureActive
+    onEachFeature: onEachDistrict
   }).addTo(map);
 
   var taGeojson = L.geoJson(taData, {
     style: style,
-    onEachFeature: onEachFeatureActive
-  }).addTo(map)
-  .bringToBack();
+    onEachFeature: onEachTA
+  });
 
   </script>
   </body>
