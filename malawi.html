@@ -3,15 +3,30 @@
 <!-- TODO LIST:
   d3/html info panel
     locator/context map
-  sql.js
+  ++sql.js
+
+  TODO 4/28:
+  UI for info panel
+  choropleth symbology (normalized by population)
+    geojson ordered alphabetically to avoid text matching
+  filter data
+  context map
+  tooltip - district/ta name + proj number (use leaflet labels. copy code out provmap)
+  asynch db query (?)
+  loading indictors (?)
+
+  don't get geometry out of db, dont get data out.
+  think about ordering instead of doing text matching
+  filter by donor, type, time
 -->
 <html>
 
   <head>
     <!--TODO?: DOWNLOAD-->
   	<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
-    <script src="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
+    <script src="leaflet.js"></script>
     <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    <script src='js/sql.js'></script>
 
     <style>
     #map {
@@ -65,17 +80,28 @@
   <body>
   <div id="map"></div>
   <div id="dataPanel">
+    <input id="dbfile" type="file"></input>
     <h5 id=dataTitle>Title</h5>
     <p> some stuff or something </p>
   </div>
 
-  <script type="text/javascript" src="testjson.js"></script>
-  <script type="text/javascript" src="tadata.js"></script>
+  <script type="text/javascript" src="district.geojson"></script>
+  <script type="text/javascript" src="ta.geojson"></script>
   <script type="text/javascript">
 
   var mapboxAccessToken = "pk.eyJ1IjoiYndicm93biIsImEiOiJjaW0yOTM3NWUwNnZjODNrczkwdmpsdmdwIn0.Suenv51O4LhrgsjtEokp7A";
   var map = L.map('map').setView([-13.95, 33.7], 10);
   var displayFeature;
+  var dbFileElm = document.getElementById('dbfile');
+  var db;
+
+  var testQuery1 = "select ActivityPts.projID as ID, count() as NumActivityPtsInDistrict, ActivityPts.districtName as District, Donor, ProjectName, Status, YearSigned, YearCompleted, CumulativeCommitment, CumulativeDisbursement, Type, AMPSector, AverageClimateAdaptationScore, OverallClimateAdaptationScore, FinalClimateAdaptationScore, GeoCodedActivities, CommitmentPerActivity, DisbursementPerActivity from ActivityPts left outer join AllProjects on ActivityPts.projID = AllProjects.projID where districtName like '";
+  var testQuery2 = "' group by ActivityPts.projID, ActivityPts.districtName order by districtName desc";
+
+  //gives table with district and total number of projects
+  var testQuery3 = "select districtName, count() as FreqProjects from (select distinct projID, districtName from ActivityPts) group by districtName order by districtName asc"
+
+
 
   L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=' + mapboxAccessToken, {
       id: 'mapbox.light',
@@ -84,11 +110,6 @@
         'Imagery © <a href="http://mapbox.com">Mapbox</a>',
       id: 'mapbox.light'
   }).addTo(map);
-
-  function updateDataDisplay() {
-    var text = d3.select("#dataPanel").select("p");
-    text.text(displayFeature.properties.districtName);
-  }
 
   //TODO: MAKE MEANINGFUL COLORS
   function getColor(d) {
@@ -170,8 +191,31 @@
     onClick(e);
   }
 
+  function updateDataDisplay() {
+    //TODO: HAVE TO GET DISTRICT NAME DIFFERENTLY FROM TA DATA
+    var districtName = displayFeature.properties.district;
+    if (db) {
+      var query = testQuery1 + districtName + testQuery2;
+            debugger;
+      var stuff = db.exec(query);
+      debugger;
+    }
+    var text = d3.select("#dataPanel").select("p");
+    text.text(displayFeature.properties.district);
+  }
+
   function isTA(e) {
     return e.target.feature.properties.districtna != null
+  }
+
+  dbFileElm.onchange = function() {
+      var f = dbFileElm.files[0];
+      var r = new FileReader();
+      r.onload = function() {
+          var Uints = new Uint8Array(r.result);
+          db = new SQL.Database(Uints);
+      }
+      r.readAsArrayBuffer(f);
   }
 
   var districtGeojson = L.geoJson(districtData, {
