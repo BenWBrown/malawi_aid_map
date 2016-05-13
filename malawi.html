@@ -6,12 +6,12 @@
   ++sql.js
 
   TODO 4/28:
-  UI for info panel
-  choropleth symbology (normalized by population)
+  UI for info panel ===> barebones done but ugly
+  choropleth symbology (normalized by population) ===> need sql statements
     geojson ordered alphabetically to avoid text matching
-  filter data
-  context map
-  tooltip - district/ta name + proj number (use leaflet labels. copy code out provmap)
+  filter data ===> need sql?
+  context map ===> barebones done but ugly
+  tooltip - district/ta name + proj number (use leaflet labels. copy code out provmap) ===> ran out of time :(
   asynch db query (?)
   loading indictors (?)
 
@@ -31,14 +31,14 @@
     <style>
     #map {
       width: 600px;
-      height: 400px;
+      height: 600px;
       float: left;
       margin-top:10px;
     }
 
     #dataPanel{
       width: 400px;
-      height: 400px;
+      height: 600px;
       float:left;
       background-color: #ededed;
       margin-left: 25px;
@@ -72,6 +72,46 @@
       margin-right: 8px;
       opacity: 0.7;
     }
+
+    path.district {
+      fill: blue;
+      stroke:lightgrey;
+    }
+    .selected {
+      fill: red;
+      stroke:lightgrey;
+    }
+
+    div.panel {
+      background-color: #ffffff;
+      margin-left: 25px;
+      margin-right: 25px;
+      padding: 15px;
+      margin-top:10px;
+    }
+    .scrolling {
+    height: 80px;
+    overflow: auto;
+    }
+
+    #mapAndFilterDiv {
+      width: inherit;
+      height: 200px;
+      display: table;
+      margin-left: 25px;
+      margin-right: 25px;
+      padding: 15px;
+      margin-top:10px;
+    }
+    #contextMap {
+      display: table-cell;
+      margin-right: 25px;
+    }
+    #filter {
+      display: table-cell;
+      width: 100%;
+      margin-right: 25px;
+    }
   </style>
   </head>
 
@@ -81,8 +121,32 @@
   <div id="map"></div>
   <div id="dataPanel">
     <input id="dbfile" type="file"></input>
-    <h5 id=dataTitle>Title</h5>
-    <p> some stuff or something </p>
+    <h4 id="title"> some result or something </h4>
+    <div id="mapAndFilterDiv">
+      <div style="table-row">
+      <div id="contextMap"></div>
+      <div id="filter" class = "panel">
+        <table>
+          <!--dynamically filled by d3 -->
+        </table>
+      </div>
+    </div>
+    </div>
+    <div id="summary" class = "panel">
+      <table>
+        <!--dynamically filled by d3 -->
+      </table>
+    </div>
+    <div id="projlist" class = "panel scrolling">
+      <table>
+        <!--dynamically filled by d3 -->
+      </table>
+    </div>
+    <div id="projdetails" class = "panel scrolling">
+      <table>
+        <!--dynamically filled by d3 -->
+      </table>
+    </div>
   </div>
 
   <script type="text/javascript" src="district.geojson"></script>
@@ -192,16 +256,90 @@
   }
 
   function updateDataDisplay() {
-    //TODO: HAVE TO GET DISTRICT NAME DIFFERENTLY FROM TA DATA
-    var districtName = displayFeature.properties.district;
+    var districtName;
+    if (displayFeature.properties.district) {
+      districtName = displayFeature.properties.district;
+    } else {
+      districtName = displayFeature.properties.districtna;
+    }
+
+    //TODO: QUERY DIFFERENTLY FOR TAs!!!!!
+
+    //highlight in context map
+    d3.select("#contextMap").selectAll("path")
+      .classed("district", true)
+      .classed("selected", false);
+    d3.select("#contextMap").select("." + districtName.replace(' ',''))
+      .classed("district", false)
+      .classed("selected", true);
+
+
     if (db) {
       var query = testQuery1 + districtName + testQuery2;
-            debugger;
-      var stuff = db.exec(query);
-      debugger;
+      var result = db.exec(query);
+      console.log(result);
+
+      var columns = result[0].columns;
+
+      var summary = {"activeProjs":
+                        {name: "Number of projects" ,
+                        stat: result[0].values.length},
+                      "someOtherStat":
+                        {name: "Some other stat",
+                          stat: 42,
+                        }};
+
+      //make title
+      var title = d3.select("#title");
+      title.text(displayFeature.properties.district);
+
+      //populate table of summary stats for district
+      var summaryTable = d3.select("#summary").select("table");
+      var rows = summaryTable.selectAll("tr").data(["activeProjs", "someOtherStat"]);
+      rows.exit().remove();
+      var row = rows.enter().append("tr");
+      row.append("td").attr("class", "td1");
+      row.append("td").attr("class", "td2");
+
+      rows.select(".td1").text(function(d){return summary[d].name + ": ";});
+      rows.select(".td2").text(function(d){return summary[d].stat;});
+
+      //populate table of projects
+      var index = columns.findIndex(function(e) {return e == "ProjectName";});
+      if (index) {
+        var projectTable = d3.select("#projlist").select("table");
+        var rows = projectTable.selectAll("tr").data(result[0].values);
+        rows.exit().remove();
+        var row = rows.enter().append("tr");
+        row.append("td").attr("class", "td1");
+
+        rows.select(".td1").text(function(d) {return d[index];});
+
+        //on click, update project details
+        rows.on("click", function(data) {
+          console.log(columns);
+
+          var projDetails = {"Donor": "Donor",
+                              "ProjectName": "Project Name",
+                              "YearSigned": "Year Signed",
+                              "YearCompleted": "Year Complete",
+                              "CumulativeCommitment": "Cumulative Commitment"};
+
+          var projDetailTable = d3.select("#projdetails").select("table");
+          var rows = projDetailTable.selectAll("tr").data(Object.keys(projDetails));
+          rows.exit().remove();
+          var row = rows.enter().append("tr");
+          row.append("td").attr("class", "td1");
+          row.append("td").attr("class", "td2");
+
+          rows.select(".td1").text(function(d) {return projDetails[d];});
+          rows.select(".td2").text(function(d) {
+            var index = columns.findIndex(function(e) {return e == d;});
+            return data[index];
+          })
+        })
+      }
     }
-    var text = d3.select("#dataPanel").select("p");
-    text.text(displayFeature.properties.district);
   }
 
   function isTA(e) {
@@ -227,6 +365,28 @@
     style: style,
     onEachFeature: onEachTA
   });
+
+  //create reference/context map
+  var width = 80, height =200;
+  var svg = d3.select("#contextMap")
+      .append("svg")
+      .attr({"width":width, "height":height});
+
+  var projection = d3.geo.mercator()
+			.center([34.3, -13.25])
+			.scale(1200)
+			.translate([(width) / 2, (height)/2]);
+
+  var path = d3.geo.path()
+     .projection(projection);
+
+ svg.selectAll("path")
+ .data(districtData.features)
+ .enter()
+ .append("path")
+ .attr("d",path)
+ .attr("class", function(d){return "district " + d.properties.district.replace(' ','')});
+
 
   </script>
   </body>
