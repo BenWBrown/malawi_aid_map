@@ -18,6 +18,9 @@
   don't get geometry out of db, dont get data out.
   think about ordering instead of doing text matching
   filter by donor, type, time
+
+  TODO:
+  COMMENTS THEN AESTHETICS
 -->
 <html>
 
@@ -74,12 +77,12 @@
     }
 
     path.district {
-      fill: blue;
-      stroke:lightgrey;
+      fill: lightgrey;
+      /*stroke:lightgrey;*/
     }
     .selected {
       fill: red;
-      stroke:lightgrey;
+      /*stroke:lightgrey;*/
     }
 
     div.panel {
@@ -98,19 +101,13 @@
       width: inherit;
       height: 200px;
       display: table;
-      margin-left: 25px;
+      /*margin-left: 25px;
       margin-right: 25px;
       padding: 15px;
-      margin-top:10px;
+      margin-top:10px;*/
     }
     #contextMap {
       display: table-cell;
-      margin-right: 25px;
-    }
-    #filter {
-      display: table-cell;
-      width: 100%;
-      margin-right: 25px;
     }
   </style>
   </head>
@@ -121,21 +118,21 @@
   <div id="map"></div>
   <div id="dataPanel">
     <input id="dbfile" type="file"></input>
-    <h4 id="title"> some result or something </h4>
     <div id="mapAndFilterDiv">
       <div style="table-row">
-      <div id="contextMap"></div>
-      <div id="filter" class = "panel">
+        <div id="contextMap"></div>
+
+        <div id="summary" class = "panel" style = "display: table-cell">
+          <h4 id="title"> some result or something </h4>
+          <table>
+            <!--dynamically filled by d3 -->
+          </table>
+        </div>
+
         <table>
           <!--dynamically filled by d3 -->
         </table>
       </div>
-    </div>
-    </div>
-    <div id="summary" class = "panel">
-      <table>
-        <!--dynamically filled by d3 -->
-      </table>
     </div>
     <div id="projlist" class = "panel scrolling">
       <table>
@@ -149,15 +146,16 @@
     </div>
   </div>
 
+  <!--these includes create the variables districtData and taData -->
   <script type="text/javascript" src="district.geojson"></script>
   <script type="text/javascript" src="ta.geojson"></script>
   <script type="text/javascript">
 
   var mapboxAccessToken = "pk.eyJ1IjoiYndicm93biIsImEiOiJjaW0yOTM3NWUwNnZjODNrczkwdmpsdmdwIn0.Suenv51O4LhrgsjtEokp7A";
-  var map = L.map('map').setView([-13.95, 33.7], 10);
-  var displayFeature;
-  var dbFileElm = document.getElementById('dbfile');
-  var db;
+  var map = L.map('map').setView([-13.95, 33.7], 10); //L stands for 'Leaflet'
+  var displayFeature; //global variable representing the District or TA being displayed
+  var dbFileElm = document.getElementById('dbfile'); //HTML5 file reader (where you upload file)
+  var db; //global variable representing sqlite database
 
   var testQuery1 = "select ActivityPts.projID as ID, count() as NumActivityPtsInDistrict, ActivityPts.districtName as District, Donor, ProjectName, Status, YearSigned, YearCompleted, CumulativeCommitment, CumulativeDisbursement, Type, AMPSector, AverageClimateAdaptationScore, OverallClimateAdaptationScore, FinalClimateAdaptationScore, GeoCodedActivities, CommitmentPerActivity, DisbursementPerActivity from ActivityPts left outer join AllProjects on ActivityPts.projID = AllProjects.projID where districtName like '";
   var testQuery2 = "' group by ActivityPts.projID, ActivityPts.districtName order by districtName desc";
@@ -166,7 +164,7 @@
   var testQuery3 = "select districtName, count() as FreqProjects from (select distinct projID, districtName from ActivityPts) group by districtName order by districtName asc"
 
 
-
+  //grey tile layer from openstreetmap
   L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=' + mapboxAccessToken, {
       id: 'mapbox.light',
       attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, ' +
@@ -175,6 +173,7 @@
       id: 'mapbox.light'
   }).addTo(map);
 
+  //creates color scale
   //TODO: MAKE MEANINGFUL COLORS
   function getColor(d) {
     return d > 18 ? '#800026' :
@@ -187,6 +186,8 @@
                       '#FFEDA0';
   }
 
+  //this function gets called once for each polygon on startup
+  //and once each time a polygon's style needs to be reset
   //TODO: STYLE DIFFERENTLY?
   function style(feature) {
     return {
@@ -199,6 +200,7 @@
     };
   }
 
+  //on zoom-end event. 9 is an arbitrary zoom level for showing TA vs District
   map.on("zoomend", function(e) {
     if (map.getZoom() >= 9) {
       taGeojson.addTo(map);
@@ -209,7 +211,9 @@
     }
   });
 
+  //this function only gets called ONCE per each TA ON STARTUP
   function onEachTA(feature, layer) {
+    console.log("onEachTA called")
     layer.on({
         mouseover: highlightFeature,
         mouseout: resetHighlight,
@@ -217,6 +221,8 @@
     });
   }
 
+  //this function only gets called ONCE per each district ON STARTUP
+  //this is where we're setting what functions get called on which events
   function onEachDistrict(feature, layer) {
     layer.on({
         mouseover: highlightFeature,
@@ -226,6 +232,7 @@
     })
   }
 
+  //this function gets called on mouseover for each polygon
   function highlightFeature(e) {
     var layer = e.target;
     layer.setStyle({
@@ -237,17 +244,20 @@
     layer.bringToFront();
   }
 
+  //this function gets called on mouseout for each polygon
   function resetHighlight(e) {
     if (e.target) districtGeojson.resetStyle(e.target);
     else districtGeojson.resetStyle(e);
   }
 
+  //called on click
   function onClick(e) {
     var feature = e.target.feature;
     displayFeature = feature;
     updateDataDisplay();
   }
 
+  //called on double click
   function onDoubleClick(e) {
     if (!isTA(e)) {
       map.fitBounds(e.target.getBounds());
@@ -255,8 +265,11 @@
     onClick(e);
   }
 
+  //this function gets called whenever we need to change what's being
+  //displayed on the side panel
   function updateDataDisplay() {
     var districtName;
+    //checking whether we have a TA or district, and getting the enclosing district name
     if (displayFeature.properties.district) {
       districtName = displayFeature.properties.district;
     } else {
@@ -266,19 +279,26 @@
     //TODO: QUERY DIFFERENTLY FOR TAs!!!!!
 
     //highlight in context map
+    //this first selection says: "select the html element with the id 'contextMap' (in this case a div),
+    //then select all html path elements within that div, and give them the CSS class 'district'"
     d3.select("#contextMap").selectAll("path")
       .classed("district", true)
       .classed("selected", false);
+    //this one says: "from that same div, select the element with the CSS class districtName,
+    //and give it those particular CSS classes"
+    //(when doing a selection, a period indicates CSS class, and a # indicates html id)
     d3.select("#contextMap").select("." + districtName.replace(' ',''))
       .classed("district", false)
       .classed("selected", true);
 
-
+    //if sqlite database exists...
     if (db) {
       var query = testQuery1 + districtName + testQuery2;
-      var result = db.exec(query);
-      console.log(result);
+      var result = db.exec(query); //runs a query and gets the results
+      //console.log(result);
 
+      //result is actually an array of results, but with only one element,
+      //so we just access result[0]
       var columns = result[0].columns;
 
       var summary = {"activeProjs":
@@ -290,12 +310,14 @@
                         }};
 
       //make title
-      var title = d3.select("#title");
-      title.text(displayFeature.properties.district);
+      var title = d3.select("#title"); //selecting html element with id 'title'
+      //.text() is a method for a d3 selection that sets the text
+      title.text(displayFeature.properties.district); //TODO: MAKE WORK FOR TA
 
       //populate table of summary stats for district
       var summaryTable = d3.select("#summary").select("table");
-      var rows = summaryTable.selectAll("tr").data(["activeProjs", "someOtherStat"]);
+      var rows = summaryTable.selectAll("tr")
+        .data(["activeProjs", "someOtherStat"]); //see below for an explanation of d3.data()
       rows.exit().remove();
       var row = rows.enter().append("tr");
       row.append("td").attr("class", "td1");
@@ -308,16 +330,30 @@
       var index = columns.findIndex(function(e) {return e == "ProjectName";});
       if (index) {
         var projectTable = d3.select("#projlist").select("table");
-        var rows = projectTable.selectAll("tr").data(result[0].values);
-        rows.exit().remove();
-        var row = rows.enter().append("tr");
-        row.append("td").attr("class", "td1");
+        var rows = projectTable.selectAll("tr") //first select all rows in the table
+          .data(result[0].values); //now we're trying to bind the data from result[0].values with the table rows we have
+                                   //however, there isn't always going to be the same number of data points as existing table rows
+        rows.exit().remove();      //this is where the exit set comes in. we say rows.exit() to grab all of the rows that
+                                   //did not get matched with any data (this happens if there are more rows than data). then we call
+                                   //.remove() to get rid of them (the actual html elements are removed!)
+        var row = rows.enter().append("tr"); //but if we have MORE data than rows, we have to create new rows
+                                             //so rows.enter() grabs all the data that did not get matched to a row
+                                             //and for each one, we append a new table row (tr)
+                                             //we create a variable out of it so that we can further edit the element we're appending
+        row.append("td").attr("class", "td1"); //here we add a new td FOR EACH ROW with the CSS class "td1"
 
-        rows.select(".td1").text(function(d) {return d[index];});
+        //NOTE: at most one of the enter or exit sets will exist, but we deal with both beacuse either can happen
+
+        //after dealing with enter and exit sets the way we did. rows now contains exactly the table rows that will be displayed
+        //including ones that were matched with data and ones that were added
+
+        rows.select(".td1").text(function(d){ //now for each row, we select its td, and set its text
+          return d[index]; //the parameter passed to this function -- d -- is THE DATA THAT WAS BOUND TO EACH ROW !!! THIS IS THE COOL PART OF D3!!!!
+        });
 
         //on click, update project details
-        rows.on("click", function(data) {
-          console.log(columns);
+        //d3 is also sick in that it lets us easily create handlers for events
+        rows.on("click", function(data) { //again the parameter passed to this function -- data in this case -- is the data that has been bound to the row
 
           var projDetails = {"Donor": "Donor",
                               "ProjectName": "Project Name",
@@ -326,9 +362,9 @@
                               "CumulativeCommitment": "Cumulative Commitment"};
 
           var projDetailTable = d3.select("#projdetails").select("table");
-          var rows = projDetailTable.selectAll("tr").data(Object.keys(projDetails));
-          rows.exit().remove();
-          var row = rows.enter().append("tr");
+          var rows = projDetailTable.selectAll("tr").data(Object.keys(projDetails)); //Object.keys() returns an array of keys
+          rows.exit().remove();  //since we know there is going to be the same number of data points each time, this is kind of unnecessary,
+          var row = rows.enter().append("tr");  //but it's a good habit to get into
           row.append("td").attr("class", "td1");
           row.append("td").attr("class", "td2");
 
@@ -346,6 +382,7 @@
     return e.target.feature.properties.districtna != null
   }
 
+  //this gets called when a file is uploaded
   dbFileElm.onchange = function() {
       var f = dbFileElm.files[0];
       var r = new FileReader();
@@ -356,6 +393,7 @@
       r.readAsArrayBuffer(f);
   }
 
+  //using leaflet's geoJson parser
   var districtGeojson = L.geoJson(districtData, {
     style: style,
     onEachFeature: onEachDistrict
@@ -366,7 +404,7 @@
     onEachFeature: onEachTA
   });
 
-  //create reference/context map
+  //create reference/context map using d3
   var width = 80, height =200;
   var svg = d3.select("#contextMap")
       .append("svg")
